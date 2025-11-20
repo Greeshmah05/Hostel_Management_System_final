@@ -582,7 +582,7 @@ function url_with_section($section = null, $extra = []) {
             <div class="glass-card p-4">
                 <h5 class="text-white mb-3"><i class="bi bi-megaphone-fill text-info me-2"></i>Recent Notices</h5>
                 <div class="row g-3">
-                    <?php foreach(array_slice($notices, 0, 3) as $n): ?>
+                    <?php foreach(array_slice($notices, 0, 2) as $n): ?>
                         <div class="col-12">
                             <div class="p-3 rounded d-flex align-items-start" style="background: rgba(255,255,255,0.06); border-left: 4px solid #0d6efd;">
                                 <div class="me-3 mt-1">

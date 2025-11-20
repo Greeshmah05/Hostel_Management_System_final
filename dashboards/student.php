@@ -342,9 +342,6 @@ function url_with_section($section = null, $extra = []) {
                                     </div>
                                 </div>
                             <?php endforeach; ?>
-                            <div class="text-end">
-                                <a href="<?= url_with_section('notices') ?>" class="btn btn-outline-info btn-sm">View All →</a>
-                            </div>
                         <?php else: ?>
                             <p class="text-white-50 text-center">No notices yet.</p>
                         <?php endif; ?>
