@@ -1,0 +1,315 @@
+/* assets/css/style.css - FULL REPLACEMENT */
+
+/* LOGIN PAGE */
+.login-bg {
+    background: linear-gradient(135deg, #1a1a2e, #16213e);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+}
+
+.glass-card {
+    background: rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 20px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.37);
+}
+
+.glass-input {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: white;
+    border-radius: 12px;
+    padding: 0.75rem 1rem;
+    transition: all 0.3s;
+}
+
+.glass-input::placeholder {
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.glass-input:focus {
+    background: rgba(255, 255, 255, 0.15);
+    border-color: #4dabf7;
+    box-shadow: 0 0 0 0.2rem rgba(77, 171, 247, 0.25);
+    color: white;
+}
+
+.btn-login {
+    background: #4dabf7;
+    border: none;
+    color: white;
+    padding: 0.75rem;
+    font-weight: 600;
+    border-radius: 50px;
+    transition: all 0.3s;
+    box-shadow: 0 4px 15px rgba(77, 171, 247, 0.3);
+}
+
+.btn-login:hover {
+    background: #339af0;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(77, 171, 247, 0.4);
+}
+
+/* DASHBOARD STYLES */
+.dashboard-bg {
+    background: linear-gradient(135deg, #1a1a2e, #16213e);
+    min-height: 100vh;
+    color: white;
+}
+
+.sidebar {
+    position: fixed;
+    top: 0; left: 0;
+    width: 280px;
+    height: 100vh;
+    background: rgba(30, 58, 138, 0.8);
+    backdrop-filter: blur(10px);
+    padding: 1.5rem 1rem;
+    border-right: 1px solid rgba(255,255,255,0.1);
+    z-index: 1000;
+}
+
+.logo-circle {
+    width: 60px; height: 60px;
+    background: #4dabf7;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.nav-link {
+    color: rgba(255,255,255,0.8);
+    padding: 0.75rem 1rem;
+    border-radius: 12px;
+    margin: 0.3rem 0;
+    transition: all 0.3s;
+    display: flex;
+    align-items: center;
+}
+
+.nav-link i {
+    width: 32px;
+    font-size: 1.1rem;
+}
+
+.nav-link:hover, .nav-link.active {
+    background: rgba(255,255,255,0.15);
+    color: white;
+    transform: translateX(5px);
+}
+
+.main-content {
+    margin-left: 280px;
+    padding: 2rem;
+}
+
+.welcome-card, .service-card, .glass-card {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 18px;
+    transition: transform 0.3s;
+}
+
+.service-card:hover {
+    transform: translateY(-8px);
+}
+
+.icon-circle {
+    width: 60px; height: 60px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.glass-alert {
+    background: rgba(255,255,255,0.15);
+    border: 1px solid rgba(255,255,255,0.2);
+    color: white;
+    border-radius: 12px;
+}
+
+@media (max-width: 992px) {
+    .sidebar {
+        width: 80px;
+        padding: 1rem 0.5rem;
+    }
+    .sidebar .nav-link span {
+        display: none;
+    }
+    .main-content {
+        margin-left: 80px;
+    }
+}
+
+/* HIDE SCROLLBAR BUT KEEP SCROLLING */
+.sidebar .nav-container {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0 1rem;
+    /* HIDE SCROLLBAR */
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;     /* Firefox */
+}
+
+.sidebar .nav-container::-webkit-scrollbar {
+    display: none; /* Chrome, Safari, Opera */
+}
+
+/* Rest of your sidebar styles (keep as is) */
+.sidebar {
+    position: fixed;
+    top: 0; left: 0;
+    width: 280px;
+    height: 100vh;
+    background: rgba(30, 58, 138, 0.85);
+    backdrop-filter: blur(12px);
+    border-right: 1px solid rgba(255,255,255,0.1);
+    display: flex;
+    flex-direction: column;
+    z-index: 1000;
+}
+
+.sidebar .nav-link {
+    color: rgba(255,255,255,0.8);
+    padding: 0.75rem 1rem;
+    border-radius: 12px;
+    margin: 0.25rem 0;
+    transition: all 0.3s;
+    display: flex;
+    align-items: center;
+}
+
+.sidebar .nav-link i {
+    width: 32px;
+    font-size: 1.1rem;
+}
+
+.sidebar .nav-link:hover,
+.sidebar .nav-link.active {
+    background: rgba(255,255,255,0.15);
+    color: white;
+    transform: translateX(5px);
+}
+
+.main-content {
+    margin-left: 280px;
+    min-height: 100vh;
+}
+
+.content-section { display: none; }
+.content-section.active { display: block; }
+
+/* Responsive */
+@media (max-width: 992px) {
+    .sidebar { width: 80px; }
+    .sidebar .nav-link span { display: none; }
+    .main-content { margin-left: 80px; }
+}
+
+.searchable-select {
+    position: relative;
+}
+.searchable-select input {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid rgba(255,255,255,0.3);
+    border-radius: 8px;
+    background: rgba(255,255,255,0.12);
+    color: #fff;
+    font-size: 0.95rem;
+    transition: all 0.2s;
+}
+.searchable-select input:focus {
+    outline: none;
+    border-color: #0d6efd;
+    background: rgba(255,255,255,0.18);
+}
+.searchable-select .options {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    max-height: 220px;
+    overflow-y: auto;
+    background: rgba(30,30,50,0.98);
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 8px;
+    margin-top: 6px;
+    z-index: 1000;
+    display: none;
+    box-shadow: 0 8px 25px rgba(0,0,0,0.3);
+}
+.searchable-select .options.show {
+    display: block;
+}
+.searchable-select .options div {
+    padding: 10px 14px;
+    cursor: pointer;
+    color: #fff;
+    font-size: 0.9rem;
+    transition: background 0.2s;
+}
+.searchable-select .options div:hover {
+    background: rgba(13, 110, 253, 0.3);
+}
+
+/* FIXED MODAL BACKDROP */
+.modal-backdrop {
+    background-color: rgba(0, 0, 0, 0.5) !important;
+    backdrop-filter: blur(4px) !important;
+}
+
+.modal-open .modal {
+    backdrop-filter: none !important; /* No blur on modal itself */
+}
+
+.modal-content {
+    background: rgba(20, 20, 40, 0.98) !important; /* Dark semi-transparent */
+    border: 1px solid rgba(255, 255, 255, 0.15) !important;
+    border-radius: 12px !important;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3) !important;
+}
+
+.modal-header, .modal-body, .modal-footer {
+    border-color: rgba(255, 255, 255, 0.1) !important;
+    color: #fff !important;
+}
+
+.modal input, .modal select {
+    background: rgba(255, 255, 255, 0.1) !important;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    color: #fff !important;
+}
+
+.modal input::placeholder {
+    color: #ccc !important;
+}
+
+/* Force white text in all selects + nice placeholder */
+select.glass-input {
+    color: #fff !important;
+    background: rgba(255,255,255,0.1) !important;
+    border: 1px solid rgba(255,255,255,0.2) !important;
+}
+
+/* Placeholder color (modern browsers) */
+select.glass-input option[value=""][disabled] {
+    color: #ccc !important;
+}
+
+/* Fallback for older browsers – shows white placeholder */
+select.glass-input {
+    color: #fff;
+}
+select.glass-input option {
+    color: #000;           /* normal dropdown items stay readable */
+}
