@@ -253,22 +253,48 @@ if (isset($_POST['mark_fee_paid'])) {
     }
 }
 
-// === DELETE STUDENT ===
+// === DELETE STUDENT (NOW FIXES ROOM OCCUPANCY TOO) ===
 if (isset($_POST['delete_student'])) {
     $student_id = $_POST['delete_student_id'];
     try {
         $pdo->beginTransaction();
-        $stmt = $pdo->prepare("DELETE FROM attendance WHERE student_id = ?"); $stmt->execute([$student_id]);
-        $stmt = $pdo->prepare("DELETE FROM mess_bills WHERE student_id = ?"); $stmt->execute([$student_id]);
-        $stmt = $pdo->prepare("DELETE FROM leave_requests WHERE student_id = ?"); $stmt->execute([$student_id]);
-        $stmt = $pdo->prepare("DELETE FROM visitor_requests WHERE student_id = ?"); $stmt->execute([$student_id]);
-        $stmt = $pdo->prepare("DELETE FROM cleaning_requests WHERE student_id = ?"); $stmt->execute([$student_id]);
-        $stmt = $pdo->prepare("DELETE FROM complaints WHERE student_id = ?"); $stmt->execute([$student_id]);
-        $stmt = $pdo->prepare("DELETE FROM students WHERE id = ?"); $stmt->execute([$student_id]);
-        $stmt = $pdo->prepare("DELETE FROM users WHERE id = (SELECT user_id FROM students WHERE id = ?) AND role = 'student'");
+
+        // 1. Get current room & block before deleting
+        $stmt = $pdo->prepare("SELECT room_no, block FROM students WHERE id = ?");
         $stmt->execute([$student_id]);
+        $student = $stmt->fetch();
+
+        // 2. Delete all related records
+        $stmt = $pdo->prepare("DELETE FROM attendance WHERE student_id = ?"); 
+        $stmt->execute([$student_id]);
+        $stmt = $pdo->prepare("DELETE FROM mess_bills WHERE student_id = ?"); 
+        $stmt->execute([$student_id]);
+        $stmt = $pdo->prepare("DELETE FROM leave_requests WHERE student_id = ?"); 
+        $stmt->execute([$student_id]);
+        $stmt = $pdo->prepare("DELETE FROM visitor_requests WHERE student_id = ?"); 
+        $stmt->execute([$student_id]);
+        $stmt = $pdo->prepare("DELETE FROM cleaning_requests WHERE student_id = ?"); 
+        $stmt->execute([$student_id]);
+        $stmt = $pdo->prepare("DELETE FROM complaints WHERE student_id = ?"); 
+        $stmt->execute([$student_id]);
+
+        // 3. Delete from students table
+        $stmt = $pdo->prepare("DELETE FROM students WHERE id = ?"); 
+        $stmt->execute([$student_id]);
+
+        // 4. Delete user account
+        $stmt = $pdo->prepare("DELETE FROM users WHERE id = (SELECT user_id FROM students WHERE id = ?)");
+        $stmt->execute([$student_id]);
+
+        // 5. FREE THE ROOM (THIS WAS MISSING!)
+        if ($student && $student['room_no']) {
+            $stmt = $pdo->prepare("UPDATE rooms SET occupied = occupied - 1 
+                                   WHERE block = ? AND room_no = ? AND occupied > 0");
+            $stmt->execute([$student['block'], $student['room_no']]);
+        }
+
         $pdo->commit();
-        $success = "Student and all records deleted!";
+        $success = "Student deleted & room freed successfully!";
     } catch (Exception $e) {
         $pdo->rollBack();
         $error = "Delete failed: " . $e->getMessage();

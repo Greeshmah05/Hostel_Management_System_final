@@ -373,10 +373,7 @@ function url_with_section($section = null, $extra = []) {
                         <p><strong>Email:</strong> <?= htmlspecialchars($student['email'] ?? 'Not set') ?></p>
                         <p><strong>Date of Birth:</strong> <?= $student['dob'] ? date('d M Y', strtotime($student['dob'])) : 'Not set' ?></p>
                         <p><strong>Block Assigned:</strong> Block <?= $student['block'] ?></p>
-                        <p><strong>Address:</strong><br>
-                            <span class="text-white-75">
-                                <?= nl2br(htmlspecialchars($student['address'] ?? 'Not updated')) ?>
-                            </span>
+                        <p><strong>Address: </strong><?= nl2br(htmlspecialchars($student['address'] ?? 'Not updated')) ?>
                         </p>
                     </div>
 
