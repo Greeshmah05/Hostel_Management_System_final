@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Nov 25, 2025 at 07:12 PM
+-- Generation Time: Nov 25, 2025 at 07:46 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -441,8 +441,8 @@ INSERT INTO `students` (`id`, `user_id`, `name`, `phone`, `email`, `dob`, `addre
 --
 -- Table structure for table `users`
 --
--- Creation: Nov 25, 2025 at 03:11 PM
--- Last update: Nov 25, 2025 at 06:08 PM
+-- Creation: Nov 25, 2025 at 06:33 PM
+-- Last update: Nov 25, 2025 at 06:45 PM
 --
 
 DROP TABLE IF EXISTS `users`;
@@ -452,7 +452,9 @@ CREATE TABLE `users` (
   `password` varchar(255) NOT NULL,
   `role` enum('student','warden','office') NOT NULL,
   `first_login` tinyint(1) DEFAULT 1,
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `security_question` varchar(255) DEFAULT 'What is your mother''s maiden name?',
+  `security_answer` varchar(255) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
@@ -463,16 +465,16 @@ CREATE TABLE `users` (
 -- Dumping data for table `users`
 --
 
-INSERT INTO `users` (`id`, `username`, `password`, `role`, `first_login`, `created_at`) VALUES
-(1, 'admin', '0192023a7bbd73250516f069df18b500', 'office', 0, '2025-11-16 03:37:19'),
-(2, 'J023', '1958b4ad94aaf4e3589e7606fef99277', 'student', 0, '2025-11-16 04:01:39'),
-(3, 'wardenA', 'a6e4b408c8d87fa54412db5204fc4f7e', 'warden', 0, '2025-11-16 04:07:00'),
-(4, 'J028', '0de359c5e02fba87cd9843c1816e1930', 'student', 0, '2025-11-16 04:18:30'),
-(8, 'J032', '7508b31588a144b52569855e196caf12', 'student', 0, '2025-11-16 04:54:45'),
-(11, 'J066', 'fcaeccf97a7c0a4be23ce8bb0e623674', 'student', 1, '2025-11-16 13:16:49'),
-(43, 'J096', '4b2867ac9da89211a9ac281ac8b6af84', 'student', 0, '2025-11-20 11:02:40'),
-(44, 'wardenB', '93f484e38aaf2330a0dcea04a22f20b4', 'warden', 0, '2025-11-20 11:03:40'),
-(59, 'J006', 'c77dd8b9ff9d1d67f926eb7de0940b3a', 'student', 1, '2025-11-25 18:08:38');
+INSERT INTO `users` (`id`, `username`, `password`, `role`, `first_login`, `created_at`, `security_question`, `security_answer`) VALUES
+(1, 'admin', '0192023a7bbd73250516f069df18b500', 'office', 0, '2025-11-16 03:37:19', 'What is your mother\'s maiden name?', 'Admin'),
+(2, 'J023', '1958b4ad94aaf4e3589e7606fef99277', 'student', 0, '2025-11-16 04:01:39', 'What is your mother\'s maiden name?', 'Shetty'),
+(3, 'wardenA', 'b8d3e2b257650e4242db3e22fe92ab8f', 'warden', 0, '2025-11-16 04:07:00', 'What is your mother\'s maiden name?', 'Latha'),
+(4, 'J028', '0de359c5e02fba87cd9843c1816e1930', 'student', 0, '2025-11-16 04:18:30', 'What is your mother\'s maiden name?', 'Latha'),
+(8, 'J032', '7508b31588a144b52569855e196caf12', 'student', 0, '2025-11-16 04:54:45', 'What is your mother\'s maiden name?', 'Latha'),
+(11, 'J066', 'fcaeccf97a7c0a4be23ce8bb0e623674', 'student', 1, '2025-11-16 13:16:49', 'What is your mother\'s maiden name?', 'Latha'),
+(43, 'J096', '4b2867ac9da89211a9ac281ac8b6af84', 'student', 0, '2025-11-20 11:02:40', 'What is your mother\'s maiden name?', 'Latha'),
+(44, 'wardenB', '93f484e38aaf2330a0dcea04a22f20b4', 'warden', 0, '2025-11-20 11:03:40', 'What is your mother\'s maiden name?', 'Latha'),
+(59, 'J006', 'c77dd8b9ff9d1d67f926eb7de0940b3a', 'student', 1, '2025-11-25 18:08:38', 'What is your mother\'s maiden name?', 'Latha');
 
 -- --------------------------------------------------------
 

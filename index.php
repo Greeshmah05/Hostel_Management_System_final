@@ -63,6 +63,13 @@ if (isset($_SESSION['user_id'])) {
             <button type="submit" class="btn btn-login w-100 rounded-pill fw-semibold">
                 Login
             </button>
+
+            <!-- Forgot Password Link -->
+            <div class="text-center mt-3">
+                <a href="forgot_password.php" class="text-white-50 small text-decoration-none">
+                    <i class="bi bi-key me-1"></i>Forgot Password?
+                </a>
+            </div>
         </form>
     </div>
 

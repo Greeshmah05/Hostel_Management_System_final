@@ -21,17 +21,20 @@ $error = $success = '';
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $new_pass = trim($_POST['new_password']);
     $confirm_pass = trim($_POST['confirm_password']);
+    $security_answer = trim($_POST['security_answer']);
 
     if (strlen($new_pass) < 6) {
         $error = "Password must be at least 6 characters!";
     } elseif ($new_pass !== $confirm_pass) {
         $error = "Passwords do not match!";
+    } elseif (empty($security_answer)) {
+        $error = "Please provide an answer to the security question!";
     } else {
         $hashed = md5($new_pass);
-        $stmt = $pdo->prepare("UPDATE users SET password = ?, first_login = 0 WHERE id = ?");
-        $stmt->execute([$hashed, $_SESSION['user_id']]);
+        $stmt = $pdo->prepare("UPDATE users SET password = ?, security_answer = ?, first_login = 0 WHERE id = ?");
+        $stmt->execute([$hashed, $security_answer, $_SESSION['user_id']]);
 
-        $success = "Password set successfully!";
+        $success = "Password and security answer set successfully!";
 
         $dashboard = match ($user['role']) {
             'student' => 'dashboards/student.php',
@@ -128,7 +131,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     </div>
 
 
-    <p class="text-white-75 mb-4">This is your first login.<br>Please set a secure password to continue.</p>
+    <p class="text-white-75 mb-4">This is your first login.<br>Please set a secure password and answer the security question.</p>
 
     <?php if ($error): ?>
         <div class="alert alert-danger small py-2 rounded-3 mb-3"><?= $error ?></div>
@@ -147,10 +150,25 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                    placeholder="Enter password (min 6 chars)" required minlength="6">
         </div>
 
-        <div class="mb-4 text-start">
+        <div class="mb-3 text-start">
             <label class="form-label text-white fw-medium">Confirm Password</label>
             <input type="password" name="confirm_password" class="form-control glass-input" 
                    placeholder="Re-type password" required minlength="6">
+        </div>
+
+        <div class="mb-3 text-start">
+            <label class="form-label text-white fw-medium">
+                <i class="bi bi-question-circle me-1"></i>Security Question
+            </label>
+            <input type="text" class="form-control glass-input" 
+                   value="What is your mother's maiden name?" readonly>
+        </div>
+
+        <div class="mb-4 text-start">
+            <label class="form-label text-white fw-medium">Your Answer</label>
+            <input type="text" name="security_answer" class="form-control glass-input" 
+                   placeholder="Enter your answer" required>
+            <small class="text-white-50">You'll need this to reset your password</small>
         </div>
 
         <button type="submit" class="btn btn-primary btn-continue w-100">
