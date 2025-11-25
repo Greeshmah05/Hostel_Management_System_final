@@ -41,11 +41,15 @@ if (isset($_POST['add_student'])) {
     $year = $_POST['year'];
     $branch = $_POST['branch'];
 
-    $username = $register_no;
-    $password = md5($register_no . '123');
+    // Validate email format
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $error = "Invalid email address!";
+    } else {
+        $username = $register_no;
+        $password = md5($register_no . '123');
 
-    try {
-        $pdo->beginTransaction();
+        try {
+            $pdo->beginTransaction();
 
         $check = $pdo->prepare("SELECT id FROM users WHERE username = ?");
         $check->execute([$username]);
@@ -59,11 +63,12 @@ if (isset($_POST['add_student'])) {
                                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 25000.00, 50000.00)");
         $stmt->execute([$user_id, $name, $register_no, $block, $phone, $email, $dob, $address, $year, $branch]);
 
-        $pdo->commit();
-        $success = "Student added! Login: <code>$username</code> | Pass: <code>$register_no"."123</code>";
-    } catch (Exception $e) {
-        $pdo->rollBack();
-        $error = "Error: " . $e->getMessage();
+            $pdo->commit();
+            $success = "Student added! Login: <code>$username</code> | Pass: <code>$register_no"."123</code>";
+        } catch (Exception $e) {
+            $pdo->rollBack();
+            $error = "Error: " . $e->getMessage();
+        }
     }
 }
 
@@ -77,11 +82,15 @@ if (isset($_POST['add_warden'])) {
     $dob = $_POST['dob'];
     $address = $_POST['address'];
 
-    $auto_password = $username . '123';
-    $hashed_password = md5($auto_password);
+    // Validate email format
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $error = "Invalid email address!";
+    } else {
+        $auto_password = $username . '123';
+        $hashed_password = md5($auto_password);
 
-    try {
-        $pdo->beginTransaction();
+        try {
+            $pdo->beginTransaction();
 
         $check = $pdo->prepare("SELECT id FROM users WHERE username = ?");
         $check->execute([$username]);
@@ -94,11 +103,12 @@ if (isset($_POST['add_warden'])) {
         $stmt = $pdo->prepare("INSERT INTO wardens (user_id, name, block, phone, email, dob, address) VALUES (?, ?, ?, ?, ?, ?, ?)");
         $stmt->execute([$user_id, $name, $block, $phone, $email, $dob, $address]);
 
-        $pdo->commit();
-        $warden_success = "Warden added! Login: <code>$username</code> | Pass: <code>$auto_password</code>";
-    } catch (Exception $e) {
-        $pdo->rollBack();
-        $error = "Error: " . $e->getMessage();
+            $pdo->commit();
+            $warden_success = "Warden added! Login: <code>$username</code> | Pass: <code>$auto_password</code>";
+        } catch (Exception $e) {
+            $pdo->rollBack();
+            $error = "Error: " . $e->getMessage();
+        }
     }
 }
 
@@ -107,8 +117,18 @@ if (isset($_POST['upload_notice'])) {
     $title = $_POST['title'];
     $content = $_POST['content'];
     $posted_by = $_SESSION['user_id'];
-    $stmt = $pdo->prepare("INSERT INTO notices (title, content, posted_by) VALUES (?, ?, ?)");
-    $stmt->execute([$title, $content, $posted_by]);
+    $target_audience = $_POST['target_audience'] ?? 'both';
+    
+    // Check if target_audience column exists, if not add it
+    try {
+        $stmt = $pdo->prepare("INSERT INTO notices (title, content, posted_by, target_audience) VALUES (?, ?, ?, ?)");
+        $stmt->execute([$title, $content, $posted_by, $target_audience]);
+    } catch (PDOException $e) {
+        // Column doesn't exist, add it
+        $pdo->exec("ALTER TABLE notices ADD COLUMN target_audience VARCHAR(20) DEFAULT 'both'");
+        $stmt = $pdo->prepare("INSERT INTO notices (title, content, posted_by, target_audience) VALUES (?, ?, ?, ?)");
+        $stmt->execute([$title, $content, $posted_by, $target_audience]);
+    }
     $notice_success = "Notice uploaded!";
 }
 
@@ -158,6 +178,8 @@ if (isset($_POST['update_warden'])) {
 
     if (empty($name) || empty($username) || empty($block) || empty($phone) || empty($email) || empty($dob) || empty($address)) {
         $error = "All fields are required.";
+    } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $error = "Invalid email address!";
     } else {
         try {
             $pdo->beginTransaction();
@@ -217,6 +239,8 @@ if (isset($_POST['update_student'])) {
 
     if (empty($name) || empty($phone) || empty($email) || empty($dob) || empty($address) || empty($year) || empty($branch) || empty($block)) {
         $error = "All fields are required.";
+    } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $error = "Invalid email address!";
     } else {
         try {
             $pdo->beginTransaction();
@@ -253,78 +277,86 @@ if (isset($_POST['mark_fee_paid'])) {
     }
 }
 
-// === DELETE STUDENT (NOW FIXES ROOM OCCUPANCY TOO) ===
+// === DELETE STUDENT – FINAL FIX (Register No + Room Freed) ===
 if (isset($_POST['delete_student'])) {
     $student_id = $_POST['delete_student_id'];
+    
     try {
         $pdo->beginTransaction();
 
-        // 1. Get current room & block before deleting
-        $stmt = $pdo->prepare("SELECT room_no, block FROM students WHERE id = ?");
+        // 1. Get user_id + room BEFORE deleting anything
+        $stmt = $pdo->prepare("SELECT user_id, room_no, block FROM students WHERE id = ?");
         $stmt->execute([$student_id]);
         $student = $stmt->fetch();
 
+        if (!$student) {
+            throw new Exception("Student not found");
+        }
+
+        $user_id = $student['user_id'];
+        $room_no = $student['room_no'];
+        $block   = $student['block'];
+
         // 2. Delete all related records
-        $stmt = $pdo->prepare("DELETE FROM attendance WHERE student_id = ?"); 
-        $stmt->execute([$student_id]);
-        $stmt = $pdo->prepare("DELETE FROM mess_bills WHERE student_id = ?"); 
-        $stmt->execute([$student_id]);
-        $stmt = $pdo->prepare("DELETE FROM leave_requests WHERE student_id = ?"); 
-        $stmt->execute([$student_id]);
-        $stmt = $pdo->prepare("DELETE FROM visitor_requests WHERE student_id = ?"); 
-        $stmt->execute([$student_id]);
-        $stmt = $pdo->prepare("DELETE FROM cleaning_requests WHERE student_id = ?"); 
-        $stmt->execute([$student_id]);
-        $stmt = $pdo->prepare("DELETE FROM complaints WHERE student_id = ?"); 
-        $stmt->execute([$student_id]);
+        $pdo->prepare("DELETE FROM attendance WHERE student_id = ?")->execute([$student_id]);
+        $pdo->prepare("DELETE FROM mess_bills WHERE student_id = ?")->execute([$student_id]);
+        $pdo->prepare("DELETE FROM leave_requests WHERE student_id = ?")->execute([$student_id]);
+        $pdo->prepare("DELETE FROM visitor_requests WHERE student_id = ?")->execute([$student_id]);
+        $pdo->prepare("DELETE FROM cleaning_requests WHERE student_id = ?")->execute([$student_id]);
+        $pdo->prepare("DELETE FROM complaints WHERE student_id = ?")->execute([$student_id]);
 
-        // 3. Delete from students table
-        $stmt = $pdo->prepare("DELETE FROM students WHERE id = ?"); 
-        $stmt->execute([$student_id]);
+        // 3. Delete student record
+        $pdo->prepare("DELETE FROM students WHERE id = ?")->execute([$student_id]);
 
-        // 4. Delete user account
-        $stmt = $pdo->prepare("DELETE FROM users WHERE id = (SELECT user_id FROM students WHERE id = ?)");
-        $stmt->execute([$student_id]);
+        // 4. Delete user → THIS FREES THE REGISTER NUMBER!
+        $pdo->prepare("DELETE FROM users WHERE id = ?")->execute([$user_id]);
 
-        // 5. FREE THE ROOM (THIS WAS MISSING!)
-        if ($student && $student['room_no']) {
-            $stmt = $pdo->prepare("UPDATE rooms SET occupied = occupied - 1 
-                                   WHERE block = ? AND room_no = ? AND occupied > 0");
-            $stmt->execute([$student['block'], $student['room_no']]);
+        // 5. Free the room
+        if ($room_no) {
+            $pdo->prepare("UPDATE rooms SET occupied = occupied - 1 
+                           WHERE block = ? AND room_no = ? AND occupied > 0")
+                ->execute([$block, $room_no]);
         }
 
         $pdo->commit();
-        $success = "Student deleted & room freed successfully!";
+        $success = "Student deleted!";
+
     } catch (Exception $e) {
         $pdo->rollBack();
         $error = "Delete failed: " . $e->getMessage();
     }
 }
 
-// === EXPORT CSV ===
-if (isset($_POST['export_csv'])) {
-    $filename = "hms_report_" . date('Y-m-d') . ".csv";
-    header('Content-Type: text/csv');
-    header('Content-Disposition: attachment; filename="' . $filename . '"');
-    $output = fopen('php://output', 'w');
-    fputcsv($output, ['Name', 'Reg No', 'Block', 'Room', 'Fee', 'Mess Spent', 'Mess Balance', 'Att %', 'Att Days']);
-    foreach ($search_results as $r) {
-        fputcsv($output, [
-            $r['name'],
-            $r['register_no'],
-            $r['block'],
-            $r['room_no'] ?? '—',
-            ucfirst(str_replace('_', ' ', $r['fee_status'])),
-            number_format($r['total_mess'], 2),
-            number_format($r['semester_mess_balance'], 2),
-            $r['att_percent'] . '%',
-            $r['total_att_days']
-        ]);
+// === RESET ALL MESS BALANCES + OPTIONAL CLEAR HISTORY ===
+if (isset($_POST['reset_mess_bill'])) {
+    try {
+        $pdo->beginTransaction();
+
+        $default_balance = 25000.00;
+
+        // 1. Reset balance
+        $stmt = $pdo->prepare("UPDATE students SET semester_mess_balance = ?");
+        $stmt->execute([$default_balance]);
+        $affected = $stmt->rowCount();
+
+        // 2. DELETE ALL OLD BILLS (Uncomment the line below if you want FULL wipe)
+        $pdo->exec("DELETE FROM mess_bills");   // ← Remove // to delete all history
+
+        $pdo->commit();
+
+        $success = "Mess reset complete for <strong>$affected students</strong>! 
+                    Balance = ₹25,000. " . 
+                    ($pdo->query("SELECT COUNT(*) FROM mess_bills")->fetchColumn() == 0 
+                        ? "All old bills cleared." 
+                        : "Old bills preserved.");
+
+    } catch (Exception $e) {
+        $pdo->rollBack();
+        $error = "Reset failed: " . $e->getMessage();
     }
-    exit;
 }
 
-
+// === EXPORT CSV ===
 // === FETCH DATA ===
 $students = $pdo->query("SELECT s.*, u.username FROM students s JOIN users u ON s.user_id = u.id ORDER BY s.name")->fetchAll();
 $wardens = $pdo->query("SELECT w.*, u.username FROM wardens w JOIN users u ON w.user_id = u.id")->fetchAll();
@@ -352,6 +384,28 @@ $sql .= " GROUP BY s.id ORDER BY s.name";
 $stmt = $pdo->prepare($sql);
 $stmt->execute($params);
 $search_results = $stmt->fetchAll();
+
+if (isset($_POST['export_csv'])) {
+    $filename = "hms_report_" . date('Y-m-d') . ".csv";
+    header('Content-Type: text/csv');
+    header('Content-Disposition: attachment; filename="' . $filename . '"');
+    $output = fopen('php://output', 'w');
+    fputcsv($output, ['Name', 'Reg No', 'Block', 'Room', 'Fee', 'Mess Spent', 'Mess Balance', 'Att %', 'Att Days']);
+    foreach ($search_results as $r) {
+        fputcsv($output, [
+            $r['name'],
+            $r['register_no'],
+            $r['block'],
+            $r['room_no'] ?? '—',
+            ucfirst(str_replace('_', ' ', $r['fee_status'])),
+            number_format($r['total_mess'], 2),
+            number_format($r['semester_mess_balance'], 2),
+            $r['att_percent'] . '%',
+            $r['total_att_days']
+        ]);
+    }
+    exit;
+}
 
 // === GET CURRENT SECTION ===
 $active_section = $_GET['section'] ?? 'dashboard';
@@ -516,7 +570,7 @@ function url_with_section($section = null, $extra = []) {
         <?php if (isset($warden_success)): ?><div class="alert glass-alert alert-success"><?= $warden_success ?></div><?php endif; ?>
         <?php if (isset($fee_success)): ?><div class="alert glass-alert alert-success"><?= $fee_success ?></div><?php endif; ?>
         
-            <!-- DASHBOARD - FINAL WITH BLOCK-WISE STUDENT COUNT -->
+            <!-- DASHBOARD  -->
         <div id="dashboard" class="content-section <?= $active_section=='dashboard'?'active':'' ?>" style="display: <?= $active_section=='dashboard'?'block':'none' ?>;">
             <div class="welcome-card glass-card p-4 mb-4 text-center">
                 <h2 class="text-white mb-2">Office Dashboard</h2>
@@ -529,7 +583,7 @@ function url_with_section($section = null, $extra = []) {
             $unpaid_fees = $pdo->query("SELECT COUNT(*) FROM students WHERE fee_status = 'not_paid'")->fetchColumn();
             $total_notices = count($notices);
 
-            // Block-wise student count
+            // Block-wise student count+ 
             $block_a = $pdo->query("SELECT COUNT(*) FROM students WHERE block = 'A'")->fetchColumn();
             $block_b = $pdo->query("SELECT COUNT(*) FROM students WHERE block = 'B'")->fetchColumn();
             $block_c = $pdo->query("SELECT COUNT(*) FROM students WHERE block = 'C'")->fetchColumn();
@@ -659,11 +713,19 @@ function url_with_section($section = null, $extra = []) {
                         </div>
                         <div class="col-md-4">
                             <label class="form-label">Phone Number</label>
-                            <input type="tel" name="phone" class="form-control glass-input" required>
+                            <input type="tel" 
+                                name="phone" 
+                                class="form-control glass-input" 
+                                placeholder=" " 
+                                maxlength="10" 
+                                pattern="[0-9]{10}" 
+                                title="Exactly 10 digits required (e.g., 9876543210)" 
+                                oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0,10)" 
+                                required>
                         </div>
                         <div class="col-md-4">
                             <label class="form-label">Email Address</label>
-                            <input type="email" name="email" class="form-control glass-input"  required>
+                            <input type="email" name="email" class="form-control glass-input" required>
                         </div>
                         <div class="col-md-4">
                             <label class="form-label">Date of Birth</label>
@@ -721,11 +783,19 @@ function url_with_section($section = null, $extra = []) {
                         </div>
                         <div class="col-md-6">
                             <label class="form-label text-white">Phone Number</label>
-                            <input type="tel" name="phone" class="form-control glass-input"  required>
+                            <input type="tel" 
+                                name="phone" 
+                                class="form-control glass-input" 
+                                placeholder=" " 
+                                maxlength="10" 
+                                pattern="[0-9]{10}" 
+                                title="Exactly 10 digits required (e.g., 9876543210)" 
+                                oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0,10)" 
+                                required>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label text-white">Email Address</label>
-                            <input type="email" name="email" class="form-control glass-input"  required>
+                            <input type="email" name="email" class="form-control glass-input" required>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label text-white">Date of Birth</label>
@@ -777,15 +847,28 @@ function url_with_section($section = null, $extra = []) {
             </div>
         </div>
 
-        <!-- MESS BILL -->
+        <!-- MESS BILL + SEMESTER RESET (Compact Button) -->
         <div id="messbill" class="content-section <?= $active_section=='messbill'?'active':'' ?>" style="display: <?= $active_section=='messbill'?'block':'none' ?>;">
+            
+            <!-- Main Upload Section -->
             <div class="glass-card p-4">
-                <h4 class="text-white mb-3">Upload Mess Bill</h4>
+                <div class="d-flex justify-content-between align-items-start mb-4">
+                    <h4 class="text-white mb-0">Upload Mess Bill</h4>
+                    
+                    <!-- Small Reset Button at Top-Right -->
+                    <form method="POST" class="d-inline" onsubmit="return confirm('ARE YOU SURE?\n\nThis will reset mess balance for ALL <?= count($students) ?> students to ₹25,000.00\n\nCannot be undone!');">
+                        <button name="reset_mess_bill" class="btn btn-outline-primary btn-sm" title="Reset all students to ₹25,000 (New Semester)">
+                            <i class="bi bi-arrow-repeat me-1"></i> Reset All Balances
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Upload Form -->
                 <form method="POST">
                     <div class="row g-2 align-items-end">
                         <div class="col-md-5">
                             <div class="searchable-select">
-                                <input type="text" id="mess_search" placeholder="Click to see students..." autocomplete="off">
+                                <input type="text" id="mess_search" placeholder="Search student..." autocomplete="off">
                                 <input type="hidden" name="student_id" id="mess_student_id">
                                 <div class="options" id="mess_options">
                                     <?php foreach ($students as $s): ?>
@@ -799,7 +882,7 @@ function url_with_section($section = null, $extra = []) {
                         <div class="col-md-4"><input type="month" name="month" class="form-control glass-input" required></div>
                         <div class="col-md-3"><input type="number" step="0.01" name="amount" class="form-control glass-input" placeholder="0000.00" required></div>
                     </div>
-                    <button name="upload_bill" class="btn btn-primary w-100 mt-4 py-2 fs-5">Upload</button></div>
+                    <button name="upload_bill" class="btn btn-primary w-100 mt-4 py-2 fs-5">Upload Bill</button>
                 </form>
             </div>
         </div>
@@ -1039,8 +1122,16 @@ function url_with_section($section = null, $extra = []) {
                         </div>
                         <div class="col-md-6">
                             <label class="form-label text-white fw-medium">Phone Number</label>
-                            <input type="tel" name="edit_phone" class="form-control form-control-lg glass-input" 
-                                   value="<?= htmlspecialchars($w['phone'] ?? '') ?>" required>
+                            <input type="tel" 
+                                name="edit_phone" 
+                                class="form-control form-control-lg glass-input" 
+                                value="<?= htmlspecialchars($w['phone'] ?? '') ?>" 
+                                placeholder=" " 
+                                maxlength="10" 
+                                pattern="[0-9]{10}" 
+                                title="Exactly 10 digits required (e.g., 9876543210)" 
+                                oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0,10)" 
+                                required>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label text-white fw-medium">Email Address</label>
@@ -1109,8 +1200,16 @@ function url_with_section($section = null, $extra = []) {
                         </div>
                         <div class="col-md-4">
                             <label class="form-label text-white fw-medium">Phone Number</label>
-                            <input type="tel" name="edit_phone" class="form-control form-control-lg glass-input" 
-                                   value="<?= htmlspecialchars($s['phone'] ?? '') ?>" required>
+                            <input type="tel" 
+                                name="edit_phone" 
+                                class="form-control form-control-lg glass-input" 
+                                value="<?= htmlspecialchars($s['phone'] ?? '') ?>" 
+                                placeholder=" " 
+                                maxlength="10" 
+                                pattern="[0-9]{10}" 
+                                title="Exactly 10 digits required (e.g., 9876543210)" 
+                                oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0,10)" 
+                                required>
                         </div>
                         <div class="col-md-4">
                             <label class="form-label text-white fw-medium">Email Address</label>

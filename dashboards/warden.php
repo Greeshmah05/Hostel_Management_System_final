@@ -46,11 +46,20 @@ if (isset($_POST['change_password'])) {
 if (isset($_POST['post_notice'])) {
     $title = trim($_POST['notice_title']);
     $content = trim($_POST['notice_content']);
+    $target_audience = $_POST['target_audience'] ?? 'both';
     if (empty($title) || empty($content)) {
         $error = "Title and content required!";
     } else {
-        $stmt = $pdo->prepare("INSERT INTO notices (title, content, posted_by, block) VALUES (?, ?, ?, ?)");
-        $stmt->execute([$title, $content, $_SESSION['user_id'], $warden_block]);
+        // Check if target_audience column exists, if not add it
+        try {
+            $stmt = $pdo->prepare("INSERT INTO notices (title, content, posted_by, block, target_audience) VALUES (?, ?, ?, ?, ?)");
+            $stmt->execute([$title, $content, $_SESSION['user_id'], $warden_block, $target_audience]);
+        } catch (PDOException $e) {
+            // Column doesn't exist, add it
+            $pdo->exec("ALTER TABLE notices ADD COLUMN target_audience VARCHAR(20) DEFAULT 'both'");
+            $stmt = $pdo->prepare("INSERT INTO notices (title, content, posted_by, block, target_audience) VALUES (?, ?, ?, ?, ?)");
+            $stmt->execute([$title, $content, $_SESSION['user_id'], $warden_block, $target_audience]);
+        }
         $success = "Notice posted!";
     }
 }
@@ -262,13 +271,21 @@ $complaints = $pdo->prepare("SELECT c.*, s.name, s.room_no FROM complaints c JOI
 $complaints->execute([$warden_block]);
 $complaints = $complaints->fetchAll();
 
+// === ADD target_audience COLUMN IF NOT EXISTS ===
+try {
+    $pdo->query("SELECT target_audience FROM notices LIMIT 1");
+} catch (PDOException $e) {
+    $pdo->exec("ALTER TABLE notices ADD COLUMN target_audience VARCHAR(20) DEFAULT 'both'");
+}
+
 // Notices
 $notices = $pdo->query("
     SELECT n.*, u.username, w.name as warden_name 
     FROM notices n 
     JOIN users u ON n.posted_by = u.id 
     LEFT JOIN wardens w ON u.id = w.user_id 
-    WHERE n.block = '$warden_block' OR n.block IS NULL 
+    WHERE (n.block = '$warden_block' OR n.block IS NULL) 
+    AND (n.target_audience IN ('both', 'students', 'office') OR n.target_audience IS NULL)
     ORDER BY n.posted_at DESC
 ")->fetchAll();
 
@@ -395,6 +412,32 @@ function url_with_section($section = null, $extra = []) {
     }
     @media (max-width: 576px) {
         .col-lg-2-4 { flex: 0 0 50%; max-width: 50%; }
+    }
+
+    /* Exact placeholder background & text color from your screenshot */
+    .notice-input::placeholder {
+        color: #94a3b8 !important;
+        opacity: 1;
+    }
+
+    .notice-input {
+        background-color: #2d3748 !important;   /* exact dark gray from image */
+        border: 1px solid #4a5568 !important;
+        color: #e2e8f0 !important;
+        border-radius: 8px !important;
+        transition: all 0.2s ease;
+    }
+
+    .notice-input:focus {
+        background-color: #2d3748 !important;
+        color: #ffffff !important;
+        border-color: #0d6efd !important;
+        box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25) !important;
+    }
+
+    /* Select dropdown arrow color fix */
+    .notice-input.form-select {
+        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='%2394a3b8' d='M8 11l-5-5h10l-5 5z'/%3e%3c/svg%3e");
     }
 
     /* SEARCH RESULTS - HIGH CONTRAST & CLEAN */
@@ -871,29 +914,47 @@ function url_with_section($section = null, $extra = []) {
         <!-- NOTICES -->
         <div id="notices" class="content-section" style="display: <?= $active_section=='notices'?'block':'none' ?>;">
             <div class="glass-card p-4">
-                <div class="d-flex justify-content-between mb-3">
-                    <h4 class="text-white mb-0">Notices</h4>
-                    <button class="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#postNoticeModal">Post</button>
+                <h4 class="text-white mb-4">Post Notice</h4>
+                <form method="POST" class="mb-5">
+                    <input type="text" name="notice_title" class="form-control notice-input mb-3" placeholder="Title" required>
+                    <textarea name="notice_content" class="form-control notice-input" rows="4" placeholder="Content..." required style="resize: vertical;"></textarea>
+                    <button type="submit" name="post_notice" class="btn btn-primary w-100 mt-4 py-2 fs-5">Upload Notice
+                    </button>
+                </form>
+
+                <h5 class="text-white mb-3">All Notices</h5>
+                <div style="max-height: 500px; overflow-y: auto;">
+                    <?php if ($notices): ?>
+                        <?php foreach ($notices as $n): ?>
+                            <div class="border-bottom border-white border-opacity-10 pb-3 mb-3">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <h6 class="text-white mb-1"><?= htmlspecialchars($n['title']) ?></h6>
+                                        <p class="text-white-75 mb-2"><?= nl2br(htmlspecialchars($n['content'])) ?></p>
+                                    </div>
+                                    <small class="text-white-50 text-end">
+                                        by <strong><?= htmlspecialchars($n['warden_name'] ?? $n['username']) ?></strong><br>
+                                        <?= date('d M Y', strtotime($n['posted_at'])) ?>
+                                        <?php if ($n['target_audience'] == 'students'): ?>
+                                            <span class="badge bg-info ms-2">Students Only</span>
+                                        <?php elseif ($n['target_audience'] == 'office'): ?>
+                                            <span class="badge bg-warning ms-2">Office Only</span>
+                                        <?php endif; ?>
+                                    </small>
+                                </div>
+                                <?php if ($n['posted_by'] == $_SESSION['user_id']): ?>
+                                    <form method="POST" class="d-inline mt-2">
+                                        <input type="hidden" name="notice_id" value="<?= $n['id'] ?>">
+                                        <button name="delete_notice" class="btn btn-sm btn-danger" 
+                                                onclick="return confirm('Delete this notice?')">Delete</button>
+                                    </form>
+                                <?php endif; ?>
+                            </div>
+                        <?php endforeach; ?>
+                    <?php else: ?>
+                        <p class="text-white-50 text-center">No notices yet.</p>
+                    <?php endif; ?>
                 </div>
-                <?php if ($notices): ?>
-                    <?php foreach ($notices as $n): ?>
-                        <div class="border-bottom border-white border-opacity-10 pb-3 mb-3">
-                            <h6 class="text-white"><?= htmlspecialchars($n['title']) ?></h6>
-                            <p class="text-white-75 mb-1"><?= nl2br(htmlspecialchars($n['content'])) ?></p>
-                            <small class="text-white-50">
-                                by <?= htmlspecialchars($n['warden_name'] ?? $n['username']) ?> • <?= date('d M Y, h:i A', strtotime($n['posted_at'])) ?>
-                            </small>
-                            <?php if ($n['posted_by'] == $_SESSION['user_id']): ?>
-                                <form method="POST" class="d-inline ms-2">
-                                    <input type="hidden" name="notice_id" value="<?= $n['id'] ?>">
-                                    <button name="delete_notice" class="btn btn-sm btn-outline-danger" onclick="return confirm('Delete?')">Delete</button>
-                                </form>
-                            <?php endif; ?>
-                        </div>
-                    <?php endforeach; ?>
-                <?php else: ?>
-                    <p class="text-white-50 text-center">No notices.</p>
-                <?php endif; ?>
             </div>
         </div>
 
@@ -1057,9 +1118,14 @@ function url_with_section($section = null, $extra = []) {
                 <div class="modal-body">
                     <input type="text" name="notice_title" class="form-control glass-input mb-2" placeholder="Title" required>
                     <textarea name="notice_content" class="form-control glass-input" rows="4" placeholder="Content..." required></textarea>
+                    <select name="target_audience" class="form-select glass-input mt-2" required>
+                        <option value="both">For Both (Office & Students)</option>
+                        <option value="students">Only for Students</option>
+                        <option value="office">Only for Office</option>
+                    </select>
                 </div>
                 <div class="modal-footer">
-                    <button type="submit" name="post_notice" class="btn btn-danger w-100">Post Notice</button>
+                    <button type="submit" name="post_notice" class="btn btn-primary w-100">Post Notice</button>
                 </div>
             </form>
         </div>

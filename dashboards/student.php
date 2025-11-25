@@ -129,9 +129,13 @@ if (isset($_POST['visitor_req'])) {
 
 // === CLEANING REQUEST ===
 if (isset($_POST['cleaning_req'])) {
-    $stmt = $pdo->prepare("INSERT INTO cleaning_requests (student_id, room_no, issue, preferred_date) VALUES (?, ?, ?, ?)");
-    $stmt->execute([$student['id'], $student['room_no'], $_POST['issue'], $_POST['preferred_date']]);
-    $success = "Cleaning request sent!";
+    if (empty($student['room_no'])) {
+        $error = "You must be assigned a room before requesting cleaning!";
+    } else {
+        $stmt = $pdo->prepare("INSERT INTO cleaning_requests (student_id, room_no, issue, preferred_date) VALUES (?, ?, ?, ?)");
+        $stmt->execute([$student['id'], $student['room_no'], $_POST['issue'], $_POST['preferred_date']]);
+        $success = "Cleaning request sent!";
+    }
 }
 
 // === LODGE COMPLAINT ===
@@ -155,11 +159,18 @@ $notice_filter = $_GET['notice_search'] ?? '';
 $att_month = $_GET['att_month'] ?? '';
 $bill_month = $_GET['bill_month'] ?? '';
 
+// === ADD target_audience COLUMN IF NOT EXISTS ===
+try {
+    $pdo->query("SELECT target_audience FROM notices LIMIT 1");
+} catch (PDOException $e) {
+    $pdo->exec("ALTER TABLE notices ADD COLUMN target_audience VARCHAR(20) DEFAULT 'both'");
+}
+
 // === NOTICES ===
-$sql = "SELECT n.*, u.username FROM notices n JOIN users u ON n.posted_by = u.id";
+$sql = "SELECT n.*, u.username FROM notices n JOIN users u ON n.posted_by = u.id WHERE (n.target_audience IN ('both', 'students') OR n.target_audience IS NULL)";
 $params = [];
 if ($notice_filter) {
-    $sql .= " WHERE n.title LIKE ? OR n.content LIKE ?";
+    $sql .= " AND (n.title LIKE ? OR n.content LIKE ?)";
     $like = "%$notice_filter%";
     $params = [$like, $like];
 }
@@ -182,24 +193,25 @@ $bills = $stmt->fetchAll();
 
 // === ATTENDANCE ===
 $attendance = [];
+$today = date('Y-m-d');
 if ($att_month) {
     $stmt = $pdo->prepare("
         SELECT date, status 
         FROM attendance 
-        WHERE student_id = ? AND DATE_FORMAT(date, '%Y-%m') = ?
+        WHERE student_id = ? AND DATE_FORMAT(date, '%Y-%m') = ? AND date <= ?
         ORDER BY date
     ");
-    $stmt->execute([$student['id'], $att_month]);
+    $stmt->execute([$student['id'], $att_month, $today]);
     $attendance = $stmt->fetchAll();
 } else {
     $current_month = date('Y-m');
     $stmt = $pdo->prepare("
         SELECT date, status 
         FROM attendance 
-        WHERE student_id = ? AND DATE_FORMAT(date, '%Y-%m') = ?
+        WHERE student_id = ? AND DATE_FORMAT(date, '%Y-%m') = ? AND date <= ?
         ORDER BY date
     ");
-    $stmt->execute([$student['id'], $current_month]);
+    $stmt->execute([$student['id'], $current_month, $today]);
     $attendance = $stmt->fetchAll();
 }
 
