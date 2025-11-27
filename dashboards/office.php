@@ -1416,6 +1416,35 @@ document.getElementById('wardenSearch')?.addEventListener('input', function() {
         row.style.display = text.includes(filter) ? '' : 'none';
     });
 });
+
+// Save and restore sidebar scroll position
+document.addEventListener('DOMContentLoaded', function() {
+    const sidebar = document.querySelector('.sidebar');
+    const navContainer = document.querySelector('.nav-container');
+    
+    // Restore scroll position on page load
+    const savedScrollPos = sessionStorage.getItem('sidebarScrollPos');
+    if (savedScrollPos && navContainer) {
+        navContainer.scrollTop = parseInt(savedScrollPos);
+    }
+    
+    // Save scroll position before navigating
+    if (navContainer) {
+        navContainer.addEventListener('scroll', function() {
+            sessionStorage.setItem('sidebarScrollPos', navContainer.scrollTop);
+        });
+    }
+    
+    // Save scroll position when clicking links
+    const navLinks = document.querySelectorAll('.sidebar .nav-link');
+    navLinks.forEach(link => {
+        link.addEventListener('click', function() {
+            if (navContainer) {
+                sessionStorage.setItem('sidebarScrollPos', navContainer.scrollTop);
+            }
+        });
+    });
+});
 </script>
 </body>
 </html>
