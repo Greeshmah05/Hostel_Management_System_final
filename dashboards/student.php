@@ -110,8 +110,11 @@ if (isset($_POST['apply_leave'])) {
     $from = $_POST['from_date'];
     $to = $_POST['to_date'];
     $reason = $_POST['reason'];
+    $today = date('Y-m-d');
 
-    if (strtotime($to) < strtotime($from)) {
+    if (strtotime($from) < strtotime($today)) {
+        $error = "Leave start date cannot be in the past!";
+    } elseif (strtotime($to) < strtotime($from)) {
         $error = "To date cannot be before From date!";
     } else {
         $stmt = $pdo->prepare("INSERT INTO leave_requests (student_id, from_date, to_date, reason) VALUES (?, ?, ?, ?)");
@@ -122,9 +125,16 @@ if (isset($_POST['apply_leave'])) {
 
 // === VISITOR REQUEST ===
 if (isset($_POST['visitor_req'])) {
-    $stmt = $pdo->prepare("INSERT INTO visitor_requests (student_id, visitor_name, relation, visit_date, visit_time) VALUES (?, ?, ?, ?, ?)");
-    $stmt->execute([$student['id'], $_POST['visitor_name'], $_POST['relation'], $_POST['visit_date'], $_POST['visit_time']]);
-    $success = "Visitor request sent!";
+    $visit_date = $_POST['visit_date'];
+    $today = date('Y-m-d');
+    
+    if (strtotime($visit_date) < strtotime($today)) {
+        $error = "Visitor date cannot be in the past!";
+    } else {
+        $stmt = $pdo->prepare("INSERT INTO visitor_requests (student_id, visitor_name, relation, visit_date, visit_time) VALUES (?, ?, ?, ?, ?)");
+        $stmt->execute([$student['id'], $_POST['visitor_name'], $_POST['relation'], $visit_date, $_POST['visit_time']]);
+        $success = "Visitor request sent!";
+    }
 }
 
 // === CLEANING REQUEST ===
@@ -132,9 +142,16 @@ if (isset($_POST['cleaning_req'])) {
     if (empty($student['room_no'])) {
         $error = "You must be assigned a room before requesting cleaning!";
     } else {
-        $stmt = $pdo->prepare("INSERT INTO cleaning_requests (student_id, room_no, issue, preferred_date) VALUES (?, ?, ?, ?)");
-        $stmt->execute([$student['id'], $student['room_no'], $_POST['issue'], $_POST['preferred_date']]);
-        $success = "Cleaning request sent!";
+        $preferred_date = $_POST['preferred_date'];
+        $today = date('Y-m-d');
+        
+        if (!empty($preferred_date) && strtotime($preferred_date) < strtotime($today)) {
+            $error = "Preferred cleaning date cannot be in the past!";
+        } else {
+            $stmt = $pdo->prepare("INSERT INTO cleaning_requests (student_id, room_no, issue, preferred_date) VALUES (?, ?, ?, ?)");
+            $stmt->execute([$student['id'], $student['room_no'], $_POST['issue'], $preferred_date]);
+            $success = "Cleaning request sent!";
+        }
     }
 }
 
@@ -410,8 +427,8 @@ function url_with_section($section = null, $extra = []) {
                 <h4 class="text-white mb-3">Apply Leave</h4>
                 <form method="POST" action="<?= url_with_section('leave') ?>">
                     <div class="row g-2">
-                        <div class="col"><input type="date" name="from_date" class="form-control glass-input" required></div>
-                        <div class="col"><input type="date" name="to_date" class="form-control glass-input" required></div>
+                        <div class="col"><input type="date" name="from_date" class="form-control glass-input" min="<?= date('Y-m-d') ?>" required></div>
+                        <div class="col"><input type="date" name="to_date" class="form-control glass-input" min="<?= date('Y-m-d') ?>" required></div>
                     </div>
                     <textarea name="reason" class="form-control glass-input mt-2" rows="3" placeholder="Reason..." required></textarea>
                     <button type="submit" name="apply_leave" class="btn btn-primary mt-3 w-100">Apply Leave</button>
@@ -425,7 +442,7 @@ function url_with_section($section = null, $extra = []) {
                 <h4 class="text-white mb-3">Room Cleaning Request</h4>
                 <form method="POST" action="<?= url_with_section('cleaning') ?>">
                     <textarea name="issue" class="form-control glass-input" rows="3" placeholder="Describe issue..." required></textarea>
-                    <input type="date" name="preferred_date" class="form-control glass-input mt-2">
+                    <input type="date" name="preferred_date" class="form-control glass-input mt-2" min="<?= date('Y-m-d') ?>">
                     <button type="submit" name="cleaning_req" class="btn btn-primary mt-3 w-100">Request Cleaning</button>
                 </form>
             </div>
@@ -441,7 +458,7 @@ function url_with_section($section = null, $extra = []) {
                         <div class="col"><input type="text" name="relation" class="form-control glass-input" placeholder="Relation" required></div>
                     </div>
                     <div class="row g-2 mt-2">
-                        <div class="col"><input type="date" name="visit_date" class="form-control glass-input" required></div>
+                        <div class="col"><input type="date" name="visit_date" class="form-control glass-input" min="<?= date('Y-m-d') ?>" required></div>
                         <div class="col"><input type="time" name="visit_time" class="form-control glass-input" required></div>
                     </div>
                     <button type="submit" name="visitor_req" class="btn btn-primary mt-3 w-100">Submit Request</button>
