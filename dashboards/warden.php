@@ -231,7 +231,7 @@ $all_rooms = $rooms->fetchAll();
 $past_att = [];
 if ($att_date) {
     $stmt = $pdo->prepare("
-        SELECT s.id, s.name, s.room_no, s.register_no, COALESCE(a.status, 'absent') as status 
+        SELECT s.id, s.name, s.room_no, s.register_no, a.status
         FROM students s 
         LEFT JOIN attendance a ON s.id = a.student_id AND a.date = ?
         WHERE s.block = ?
@@ -679,7 +679,8 @@ function url_with_section($section = null, $extra = []) {
                     <?php if ($past_att): ?>
                         <?php foreach ($past_att as $s): 
                             $isFuture = strtotime($att_date) > time();
-                            $defaultStatus = $isFuture ? 'present' : ($s['status'] ?? 'absent');
+                            // If no attendance record (status is NULL), default to 'present' for future dates
+                            $defaultStatus = $s['status'] ?? ($isFuture ? 'present' : 'present');
                         ?>
                             <div class="d-flex justify-content-between align-items-center border-bottom border-white border-opacity-10 py-3">
                                 <div>
