@@ -1422,10 +1422,18 @@ document.addEventListener('DOMContentLoaded', function() {
     const sidebar = document.querySelector('.sidebar');
     const navContainer = document.querySelector('.nav-container');
     
-    // Restore scroll position on page load
+    // Check if this is a fresh login (no section parameter means fresh login)
+    const urlParams = new URLSearchParams(window.location.search);
+    const hasSection = urlParams.has('section');
+    
+    // Restore scroll position only if navigating within the dashboard
     const savedScrollPos = sessionStorage.getItem('sidebarScrollPos');
-    if (savedScrollPos && navContainer) {
+    if (savedScrollPos && navContainer && hasSection) {
         navContainer.scrollTop = parseInt(savedScrollPos);
+    } else if (navContainer) {
+        // Fresh login - start at top
+        navContainer.scrollTop = 0;
+        sessionStorage.setItem('sidebarScrollPos', '0');
     }
     
     // Save scroll position before navigating

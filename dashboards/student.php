@@ -308,10 +308,7 @@ function url_with_section($section = null, $extra = []) {
             <li class="nav-item"><a href="<?= url_with_section('notices') ?>" class="nav-link <?= $active_section=='notices'?'active':'' ?>" data-section="notices">Notices</a></li>
             <li class="nav-item"><a href="<?= url_with_section('attendance') ?>" class="nav-link <?= $active_section=='attendance'?'active':'' ?>" data-section="attendance">Attendance</a></li>
             <li class="nav-item"><a href="<?= url_with_section('messbill') ?>" class="nav-link <?= $active_section=='messbill'?'active':'' ?>" data-section="messbill">Mess Bill</a></li>
-            <li class="nav-item"><a href="<?= url_with_section('leavehistory') ?>" class="nav-link <?= $active_section=='leavehistory'?'active':'' ?>" data-section="leavehistory">Leave History</a></li>
-            <li class="nav-item"><a href="<?= url_with_section('visitorhistory') ?>" class="nav-link <?= $active_section=='visitorhistory'?'active':'' ?>" data-section="visitorhistory">Visitor History</a></li>
-            <li class="nav-item"><a href="<?= url_with_section('cleaninghistory') ?>" class="nav-link <?= $active_section=='cleaninghistory'?'active':'' ?>" data-section="cleaninghistory">Cleaning History</a></li>
-            <li class="nav-item"><a href="<?= url_with_section('complainthistory') ?>" class="nav-link <?= $active_section=='complainthistory'?'active':'' ?>" data-section="complainthistory">Complaint History</a></li>
+            <li class="nav-item"><a href="<?= url_with_section('history') ?>" class="nav-link <?= $active_section=='history'?'active':'' ?>" data-section="history">Request History</a></li>
 
             <li class="nav-item mt-4">
                 <a href="#" class="nav-link text-warning" data-bs-toggle="modal" data-bs-target="#changePasswordModal">
@@ -428,6 +425,7 @@ function url_with_section($section = null, $extra = []) {
                         <p><strong>Year of Study:</strong> <?= htmlspecialchars($student['year'] ?? 'Not set') ?></p>
                         <p><strong>Branch:</strong> <?= htmlspecialchars($student['branch'] ?? 'Not set') ?></p>
                         <p><strong>Room No:</strong> <?= $student['room_no'] ?? 'Not Assigned' ?></p>
+                        <p><strong>Semester Rent:</strong> <span class="text-white">₹<?= number_format($student['semester_rent'], 2) ?></span></p>
                         <p><strong>Mess Balance:</strong> <span class="text-white ">₹<?= number_format($student['semester_mess_balance'], 2) ?></span></p>
                         <p><strong>Fee Status:</strong> 
                             <span class="badge bg-<?= $student['fee_status']=='paid'?'success':'danger' ?> small px-2 py-1">
@@ -512,7 +510,7 @@ function url_with_section($section = null, $extra = []) {
                         </div>
                     </form>
                 </div>
-                <div style="max-height: 400px; overflow-y: auto;">
+                <div style="overflow-y: auto;">
                     <?php if ($notices): ?>
                         <?php foreach ($notices as $n): ?>
                             <div class="border-bottom border-white border-opacity-10 pb-3 mb-3">
@@ -606,150 +604,185 @@ function url_with_section($section = null, $extra = []) {
             </div>
         </div>
 
-        <!-- LEAVE HISTORY -->
-        <div id="leavehistory" class="content-section <?= $active_section=='leavehistory'?'active':'' ?>" style="display: <?= $active_section=='leavehistory'?'block':'none' ?>;">
+        <!-- REQUEST HISTORY (CONSOLIDATED WITH TABS) -->
+        <div id="history" class="content-section <?= $active_section=='history'?'active':'' ?>" style="display: <?= $active_section=='history'?'block':'none' ?>;">
             <div class="glass-card p-4">
-                <h4 class="text-white mb-3">Leave History</h4>
-                <?php if ($leaves): ?>
-                    <table class="table table-dark table-sm">
-                        <thead><tr><th>Dates</th><th>Reason</th><th>Status</th><th>Action By</th></tr></thead>
-                        <tbody>
-                            <?php foreach ($leaves as $l): ?>
-                                <tr>
-                                    <td><?= date('d M', strtotime($l['from_date'])) ?> - <?= date('d M Y', strtotime($l['to_date'])) ?></td>
-                                    <td><?= htmlspecialchars(substr($l['reason'], 0, 25)) ?>...</td>
-                                    <td><span class="badge bg-<?= $l['status']=='approved'?'success':($l['status']=='rejected'?'danger':'warning') ?>"><?= ucfirst($l['status']) ?></span></td>
-                                    <td><small><?= $l['action_by'] ? htmlspecialchars($l['action_by']) : '—' ?></small></td>
-                                </tr>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
-                <?php else: ?>
-                    <p class="text-center text-white-50">No leave requests.</p>
-                <?php endif; ?>
-            </div>
-        </div>
+                <h4 class="text-white mb-4">Request History</h4>
+                
+                <!-- Tab Navigation -->
+                <ul class="nav nav-pills mb-4" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="leave-tab" data-bs-toggle="pill" data-bs-target="#leave-history" type="button" role="tab">
+                            <i class="bi bi-calendar-x me-2"></i>Leave
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="visitor-tab" data-bs-toggle="pill" data-bs-target="#visitor-history" type="button" role="tab">
+                            <i class="bi bi-person-check me-2"></i>Visitor
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="cleaning-tab" data-bs-toggle="pill" data-bs-target="#cleaning-history" type="button" role="tab">
+                            <i class="bi bi-brush me-2"></i>Cleaning
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="complaint-tab" data-bs-toggle="pill" data-bs-target="#complaint-history" type="button" role="tab">
+                            <i class="bi bi-exclamation-circle me-2"></i>Complaints
+                        </button>
+                    </li>
+                </ul>
 
-        <!-- VISITOR REQUEST HISTORY -->
-        <div id="visitorhistory" class="content-section <?= $active_section=='visitorhistory'?'active':'' ?>" style="display: <?= $active_section=='visitorhistory'?'block':'none' ?>;">
-            <div class="glass-card p-4">
-                <h4 class="text-white mb-3">Visitor Request History</h4>
-                <?php if ($visitor_requests): ?>
-                    <div class="table-responsive">
-                        <table class="table table-dark table-sm">
-                            <thead>
-                                <tr>
-                                    <th>Visitor Name</th>
-                                    <th>Relation</th>
-                                    <th>Visit Date</th>
-                                    <th>Time</th>
-                                    <th>Status</th>
-                                    <th>Action By</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php foreach ($visitor_requests as $vr): ?>
-                                    <tr>
-                                        <td><?= htmlspecialchars($vr['visitor_name']) ?></td>
-                                        <td><?= htmlspecialchars($vr['relation']) ?></td>
-                                        <td><?= date('d M Y', strtotime($vr['visit_date'])) ?></td>
-                                        <td><?= date('h:i A', strtotime($vr['visit_time'])) ?></td>
-                                        <td>
-                                            <span class="badge bg-<?= $vr['status']=='approved'?'success':($vr['status']=='rejected'?'danger':'warning') ?>">
-                                                <?= ucfirst($vr['status']) ?>
-                                            </span>
-                                        </td>
-                                        <td><small><?= $vr['action_by'] ? htmlspecialchars($vr['action_by']) : '—' ?></small></td>
-                                    </tr>
-                                <?php endforeach; ?>
-                            </tbody>
-                        </table>
+                <!-- Tab Content -->
+                <div class="tab-content">
+                    <!-- LEAVE HISTORY TAB -->
+                    <div class="tab-pane fade show active" id="leave-history" role="tabpanel">
+                        <?php if ($leaves): ?>
+                            <div class="table-responsive">
+                                <table class="table table-dark table-sm">
+                                    <thead>
+                                        <tr>
+                                            <th>Dates</th>
+                                            <th>Reason</th>
+                                            <th>Status</th>
+                                            <th>Action By</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <?php foreach ($leaves as $l): ?>
+                                            <tr>
+                                                <td><?= date('d M', strtotime($l['from_date'])) ?> - <?= date('d M Y', strtotime($l['to_date'])) ?></td>
+                                                <td><?= htmlspecialchars(substr($l['reason'], 0, 25)) ?><?= strlen($l['reason']) > 25 ? '...' : '' ?></td>
+                                                <td>
+                                                    <span class="badge bg-<?= $l['status']=='approved'?'success':($l['status']=='rejected'?'danger':'warning') ?>">
+                                                        <?= ucfirst($l['status']) ?>
+                                                    </span>
+                                                </td>
+                                                <td><small><?= $l['action_by'] ? htmlspecialchars($l['action_by']) : '—' ?></small></td>
+                                            </tr>
+                                        <?php endforeach; ?>
+                                    </tbody>
+                                </table>
+                            </div>
+                        <?php else: ?>
+                            <p class="text-center text-white-50">No leave requests.</p>
+                        <?php endif; ?>
                     </div>
-                <?php else: ?>
-                    <p class="text-center text-white-50">No visitor requests.</p>
-                <?php endif; ?>
-            </div>
-        </div>
 
-        <!-- CLEANING REQUEST HISTORY -->
-        <div id="cleaninghistory" class="content-section <?= $active_section=='cleaninghistory'?'active':'' ?>" style="display: <?= $active_section=='cleaninghistory'?'block':'none' ?>;">
-            <div class="glass-card p-4">
-                <h4 class="text-white mb-3">Cleaning Request History</h4>
-                <?php if ($cleaning_requests): ?>
-                    <div class="table-responsive">
-                        <table class="table table-dark table-sm">
-                            <thead>
-                                <tr>
-                                    <th>Room No</th>
-                                    <th>Issue</th>
-                                    <th>Preferred Date</th>
-                                    <th>Status</th>
-                                    <th>Action By</th>
-                                    <th>Requested At</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php foreach ($cleaning_requests as $cr): ?>
-                                    <tr>
-                                        <td><?= htmlspecialchars($cr['room_no']) ?></td>
-                                        <td><?= htmlspecialchars(substr($cr['issue'], 0, 30)) ?><?= strlen($cr['issue']) > 30 ? '...' : '' ?></td>
-                                        <td><?= $cr['preferred_date'] ? date('d M Y', strtotime($cr['preferred_date'])) : '—' ?></td>
-                                        <td>
-                                            <span class="badge bg-<?= $cr['status']=='approved'?'success':($cr['status']=='rejected'?'danger':'warning') ?>">
-                                                <?= ucfirst($cr['status']) ?>
-                                            </span>
-                                        </td>
-                                        <td><small><?= $cr['action_by'] ? htmlspecialchars($cr['action_by']) : '—' ?></small></td>
-                                        <td><small><?= date('d M Y', strtotime($cr['requested_at'])) ?></small></td>
-                                    </tr>
-                                <?php endforeach; ?>
-                            </tbody>
-                        </table>
+                    <!-- VISITOR HISTORY TAB -->
+                    <div class="tab-pane fade" id="visitor-history" role="tabpanel">
+                        <?php if ($visitor_requests): ?>
+                            <div class="table-responsive">
+                                <table class="table table-dark table-sm">
+                                    <thead>
+                                        <tr>
+                                            <th>Visitor Name</th>
+                                            <th>Relation</th>
+                                            <th>Visit Date</th>
+                                            <th>Time</th>
+                                            <th>Status</th>
+                                            <th>Action By</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <?php foreach ($visitor_requests as $vr): ?>
+                                            <tr>
+                                                <td><?= htmlspecialchars($vr['visitor_name']) ?></td>
+                                                <td><?= htmlspecialchars($vr['relation']) ?></td>
+                                                <td><?= date('d M Y', strtotime($vr['visit_date'])) ?></td>
+                                                <td><?= date('h:i A', strtotime($vr['visit_time'])) ?></td>
+                                                <td>
+                                                    <span class="badge bg-<?= $vr['status']=='approved'?'success':($vr['status']=='rejected'?'danger':'warning') ?>">
+                                                        <?= ucfirst($vr['status']) ?>
+                                                    </span>
+                                                </td>
+                                                <td><small><?= $vr['action_by'] ? htmlspecialchars($vr['action_by']) : '—' ?></small></td>
+                                            </tr>
+                                        <?php endforeach; ?>
+                                    </tbody>
+                                </table>
+                            </div>
+                        <?php else: ?>
+                            <p class="text-center text-white-50">No visitor requests.</p>
+                        <?php endif; ?>
                     </div>
-                <?php else: ?>
-                    <p class="text-center text-white-50">No cleaning requests.</p>
-                <?php endif; ?>
-            </div>
-        </div>
 
-        <!-- COMPLAINT HISTORY -->
-        <div id="complainthistory" class="content-section <?= $active_section=='complainthistory'?'active':'' ?>" style="display: <?= $active_section=='complainthistory'?'block':'none' ?>;">
-            <div class="glass-card p-4">
-                <h4 class="text-white mb-3">Complaint History</h4>
-                <?php if ($complaints): ?>
-                    <div class="table-responsive">
-                        <table class="table table-dark table-sm">
-                            <thead>
-                                <tr>
-                                    <th>Subject</th>
-                                    <th>Message</th>
-                                    <th>Status</th>
-                                    <th>Resolved By</th>
-                                    <th>Submitted At</th>
-                                    <th>Resolved At</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php foreach ($complaints as $comp): ?>
-                                    <tr>
-                                        <td><?= htmlspecialchars($comp['subject']) ?></td>
-                                        <td><?= htmlspecialchars(substr($comp['message'], 0, 40)) ?><?= strlen($comp['message']) > 40 ? '...' : '' ?></td>
-                                        <td>
-                                            <span class="badge bg-<?= $comp['status']=='resolved'?'success':'danger' ?>">
-                                                <?= ucfirst($comp['status']) ?>
-                                            </span>
-                                        </td>
-                                        <td><small><?= $comp['resolved_by_user'] ? htmlspecialchars($comp['resolved_by_user']) : '—' ?></small></td>
-                                        <td><small><?= date('d M Y', strtotime($comp['submitted_at'])) ?></small></td>
-                                        <td><small><?= $comp['resolved_at'] ? date('d M Y', strtotime($comp['resolved_at'])) : '—' ?></small></td>
-                                    </tr>
-                                <?php endforeach; ?>
-                            </tbody>
-                        </table>
+                    <!-- CLEANING HISTORY TAB -->
+                    <div class="tab-pane fade" id="cleaning-history" role="tabpanel">
+                        <?php if ($cleaning_requests): ?>
+                            <div class="table-responsive">
+                                <table class="table table-dark table-sm">
+                                    <thead>
+                                        <tr>
+                                            <th>Room No</th>
+                                            <th>Issue</th>
+                                            <th>Preferred Date</th>
+                                            <th>Status</th>
+                                            <th>Action By</th>
+                                            <th>Requested At</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <?php foreach ($cleaning_requests as $cr): ?>
+                                            <tr>
+                                                <td><?= htmlspecialchars($cr['room_no']) ?></td>
+                                                <td><?= htmlspecialchars(substr($cr['issue'], 0, 30)) ?><?= strlen($cr['issue']) > 30 ? '...' : '' ?></td>
+                                                <td><?= $cr['preferred_date'] ? date('d M Y', strtotime($cr['preferred_date'])) : '—' ?></td>
+                                                <td>
+                                                    <span class="badge bg-<?= $cr['status']=='approved'?'success':($cr['status']=='rejected'?'danger':'warning') ?>">
+                                                        <?= ucfirst($cr['status']) ?>
+                                                    </span>
+                                                </td>
+                                                <td><small><?= $cr['action_by'] ? htmlspecialchars($cr['action_by']) : '—' ?></small></td>
+                                                <td><small><?= date('d M Y', strtotime($cr['requested_at'])) ?></small></td>
+                                            </tr>
+                                        <?php endforeach; ?>
+                                    </tbody>
+                                </table>
+                            </div>
+                        <?php else: ?>
+                            <p class="text-center text-white-50">No cleaning requests.</p>
+                        <?php endif; ?>
                     </div>
-                <?php else: ?>
-                    <p class="text-center text-white-50">No complaints.</p>
-                <?php endif; ?>
+
+                    <!-- COMPLAINT HISTORY TAB -->
+                    <div class="tab-pane fade" id="complaint-history" role="tabpanel">
+                        <?php if ($complaints): ?>
+                            <div class="table-responsive">
+                                <table class="table table-dark table-sm">
+                                    <thead>
+                                        <tr>
+                                            <th>Subject</th>
+                                            <th>Message</th>
+                                            <th>Status</th>
+                                            <th>Resolved By</th>
+                                            <th>Submitted At</th>
+                                            <th>Resolved At</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <?php foreach ($complaints as $comp): ?>
+                                            <tr>
+                                                <td><?= htmlspecialchars($comp['subject']) ?></td>
+                                                <td><?= htmlspecialchars(substr($comp['message'], 0, 40)) ?><?= strlen($comp['message']) > 40 ? '...' : '' ?></td>
+                                                <td>
+                                                    <span class="badge bg-<?= $comp['status']=='resolved'?'success':'danger' ?>">
+                                                        <?= ucfirst($comp['status']) ?>
+                                                    </span>
+                                                </td>
+                                                <td><small><?= $comp['resolved_by_user'] ? htmlspecialchars($comp['resolved_by_user']) : '—' ?></small></td>
+                                                <td><small><?= date('d M Y', strtotime($comp['submitted_at'])) ?></small></td>
+                                                <td><small><?= $comp['resolved_at'] ? date('d M Y', strtotime($comp['resolved_at'])) : '—' ?></small></td>
+                                            </tr>
+                                        <?php endforeach; ?>
+                                    </tbody>
+                                </table>
+                            </div>
+                        <?php else: ?>
+                            <p class="text-center text-white-50">No complaints.</p>
+                        <?php endif; ?>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -787,10 +820,18 @@ document.addEventListener('DOMContentLoaded', function() {
     const sidebar = document.querySelector('.sidebar');
     const navContainer = document.querySelector('.nav-container');
     
-    // Restore scroll position on page load
+    // Check if this is a fresh login (no section parameter means fresh login)
+    const urlParams = new URLSearchParams(window.location.search);
+    const hasSection = urlParams.has('section');
+    
+    // Restore scroll position only if navigating within the dashboard
     const savedScrollPos = sessionStorage.getItem('sidebarScrollPos');
-    if (savedScrollPos && navContainer) {
+    if (savedScrollPos && navContainer && hasSection) {
         navContainer.scrollTop = parseInt(savedScrollPos);
+    } else if (navContainer) {
+        // Fresh login - start at top
+        navContainer.scrollTop = 0;
+        sessionStorage.setItem('sidebarScrollPos', '0');
     }
     
     // Save scroll position before navigating
