@@ -17,35 +17,52 @@ if (!$user) {
 }
 
 $error = $success = '';
+$step = $_SESSION['password_step'] ?? 1;
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    $new_pass = trim($_POST['new_password']);
-    $confirm_pass = trim($_POST['confirm_password']);
-    $security_answer = trim($_POST['security_answer']);
+    if ($step == 1) {
+        // Step 1: Password validation
+        $new_pass = trim($_POST['new_password']);
+        $confirm_pass = trim($_POST['confirm_password']);
 
-    if (strlen($new_pass) < 6) {
-        $error = "Password must be at least 6 characters!";
-    } elseif ($new_pass !== $confirm_pass) {
-        $error = "Passwords do not match!";
-    } elseif (empty($security_answer)) {
-        $error = "Please provide an answer to the security question!";
-    } else {
-        $hashed = md5($new_pass);
-        $stmt = $pdo->prepare("UPDATE users SET password = ?, security_answer = ?, first_login = 0 WHERE id = ?");
-        $stmt->execute([$hashed, $security_answer, $_SESSION['user_id']]);
+        if (strlen($new_pass) < 6) {
+            $error = "Password must be at least 6 characters!";
+        } elseif ($new_pass !== $confirm_pass) {
+            $error = "Passwords do not match!";
+        } else {
+            // Store password temporarily and move to step 2
+            $_SESSION['temp_password'] = md5($new_pass);
+            $_SESSION['password_step'] = 2;
+            $step = 2;
+        }
+    } elseif ($step == 2) {
+        // Step 2: Security question validation
+        $security_answer = trim($_POST['security_answer']);
 
-        $success = "Password and security answer set successfully!";
+        if (empty($security_answer)) {
+            $error = "Please provide an answer to the security question!";
+        } else {
+            // Update password and security answer
+            $stmt = $pdo->prepare("UPDATE users SET password = ?, security_answer = ?, first_login = 0 WHERE id = ?");
+            $stmt->execute([$_SESSION['temp_password'], $security_answer, $_SESSION['user_id']]);
 
-        $dashboard = match ($user['role']) {
-            'student' => 'dashboards/student.php',
-            'warden'  => 'dashboards/warden.php',
-            'office'  => 'dashboards/office.php',
-            default   => 'index.php'
-        };
+            // Clear temporary session data
+            unset($_SESSION['temp_password']);
+            unset($_SESSION['password_step']);
 
-        echo "<script>
-            setTimeout(() => { window.location = '$dashboard'; }, 1800);
-        </script>";
+            $success = "Password and security answer set successfully!";
+
+            $dashboard = match ($user['role']) {
+                'student' => 'dashboards/student.php',
+                'warden'  => 'dashboards/warden.php',
+                'office'  => 'dashboards/office.php',
+                default   => 'index.php'
+            };
+
+            echo "<script>
+                setTimeout(() => { window.location = '$dashboard'; }, 1800);
+            </script>";
+        }
     }
 }
 ?>
@@ -130,8 +147,16 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         <i class="bi bi-person-fill text-white fs-1"></i>
     </div>
 
+    <h4 class="text-white mb-2 fw-bold">
+        <?= $step == 1 ? 'Set New Password' : 'Security Question' ?>
+    </h4>
 
-    <p class="text-white-75 mb-4">This is your first login.<br>Please set a secure password and answer the security question.</p>
+    <p class="text-white-75 mb-4">
+        <?= $step == 1 
+            ? 'This is your first login. Please set a secure password.' 
+            : 'Set up your security question for password recovery.' 
+        ?>
+    </p>
 
     <?php if ($error): ?>
         <div class="alert alert-danger small py-2 rounded-3 mb-3"><?= $error ?></div>
@@ -144,18 +169,26 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         </div>
     <?php else: ?>
     <form method="POST">
+        <?php if ($step == 1): ?>
+        <!-- Step 1: Password -->
         <div class="mb-3 text-start">
             <label class="form-label text-white fw-medium">New Password</label>
             <input type="password" name="new_password" class="form-control glass-input" 
                    placeholder="Enter password (min 6 chars)" required minlength="6">
         </div>
 
-        <div class="mb-3 text-start">
+        <div class="mb-4 text-start">
             <label class="form-label text-white fw-medium">Confirm Password</label>
             <input type="password" name="confirm_password" class="form-control glass-input" 
                    placeholder="Re-type password" required minlength="6">
         </div>
 
+        <button type="submit" class="btn btn-primary btn-continue w-100">
+            <i class="bi bi-arrow-right me-2"></i>Next
+        </button>
+
+        <?php else: ?>
+        <!-- Step 2: Security Question -->
         <div class="mb-3 text-start">
             <label class="form-label text-white fw-medium">
                 <i class="bi bi-question-circle me-1"></i>Security Question
@@ -172,8 +205,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         </div>
 
         <button type="submit" class="btn btn-primary btn-continue w-100">
-            Continue
+            <i class="bi bi-check-circle me-2"></i>Complete Setup
         </button>
+        <?php endif; ?>
     </form>
     <?php endif; ?>
 </div>
